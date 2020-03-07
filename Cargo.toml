@@ -1,0 +1,14 @@
+[package]
+name = "term-auditor"
+version = "0.1.0"
+authors = ["vagrant"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bcc = "0.0.16"
+byteorder = "1.3.1"
+ctrlc = "3.1.3"
+failure = "0.1.5"
+libc = "0.2.55"
