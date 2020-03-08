@@ -1,8 +1,13 @@
 #include <uapi/linux/ptrace.h>
-#include <linux/sched.h>
 #include <linux/fs.h>
+#include <linux/sched.h>
+#include <linux/sched/signal.h>
+#include <linux/tty.h>
 
 #define ARGSIZE  128
+#define TTYSIZE 64
+
+#define MAXARG 20
 
 enum event_type {
     EVENT_ARG,
@@ -15,6 +20,9 @@ struct data_t {
     char comm[TASK_COMM_LEN];
     enum event_type type;
     char argv[ARGSIZE];
+    char tty[TTYSIZE];
+    u32 uid;
+    u32 gid;
     int retval;
 };
 
@@ -85,6 +93,10 @@ int do_ret_sys_execve(struct pt_regs *ctx)
     // as the real_parent->tgid.
     // We use the get_ppid function as a fallback in those cases. (#1883)
     data.ppid = task->real_parent->tgid;
+    bpf_probe_read_str(data.tty, TTYSIZE, task->signal->tty->name);
+
+    data.uid = task->cred->uid.val;
+    data.gid = task->cred->gid.val;
 
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
     data.type = EVENT_RET;

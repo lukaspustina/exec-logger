@@ -4,84 +4,72 @@ extern crate failure;
 extern crate libc;
 
 use bcc::core::BPF;
-use byteorder::{NativeEndian, ReadBytesExt};
+use bcc::perf::init_perf_map;
 use failure::Error;
 
 use core::sync::atomic::{AtomicBool, Ordering};
-use std::io::Cursor;
+use std::ptr;
 use std::sync::Arc;
 
+#[repr(C)]
+enum EventType {
+    EVENT_ARG,
+    EVENT_RET,
+}
 
-https://docs.rs/procinfo/0.4.2/procinfo/pid/index.html
-https://docs.rs/procfs/0.7.7/procfs/
+#[repr(C)]
+struct Data {
+    pid: libc::c_int,
+    ppid: libc::c_int,
+    comm: [u8; 16],   // TASK_COMM_LEN
+    r#type: EventType,
+    argv: [u8; 128],   // ARGSIZE
+    tty: [u8; 64],   // TTYSIZE
+    uid: libc::c_int,
+    gid: libc::c_int,
+    ret: libc::c_int,
+}
 
-man 5 proc
-
-root@bionic64-vagrant-vm:~# cat /proc/10659/stat | awk '{ print $1, $2, $7, $8 }'
-10659 (vim) 34816 14306
-root@bionic64-vagrant-vm:~# cat /proc/10659/stat | awk '{ print $1, $2, $7, $8 }'
-10659 (vim) 34816 14308
-root@bionic64-vagrant-vm:~# cat /proc/1841/stat | awk '{ print $1, $2, $7, $8 }'
-1841 (bash) 34816 14310
-root@bionic64-vagrant-vm:~# cat /proc/1655/stat | awk '{ print $1, $2, $7, $8 }'
-cat: /proc/1655/stat: No such file or directory
-root@bionic64-vagrant-vm:~# cat /proc/1665/stat | awk '{ print $1, $2, $7, $8 }'
-1665 (zsh) 34816 14314
-root@bionic64-vagrant-vm:~# cat /proc/1664/stat | awk '{ print $1, $2, $7, $8 }'
-1664 (sshd) 0 -1
-
-root@bionic64-vagrant-vm:~# file /dev/pts/0
-/dev/pts/0: character special (136/0)
-root@bionic64-vagrant-vm:~# file /dev/tty0
-/dev/tty0: character special (4/0)
-root@bionic64-vagrant-vm:~# file /dev/tty1
-/dev/tty1: character special (4/1)
-root@bionic64-vagrant-vm:~#
+impl From<&[u8]> for Data {
+    fn from(bytes: &[u8]) -> Self {
+        unsafe { ptr::read(bytes.as_ptr() as *const Data) }
+    }
+}
 
 fn do_main(runnable: Arc<AtomicBool>) -> Result<(), Error> {
-    let code = "
-#include <uapi/linux/ptrace.h>
-
-struct key_t {
-    char c[80];
-};
-BPF_HASH(counts, struct key_t);
-
-int count(struct pt_regs *ctx) {
-    if (!PT_REGS_PARM1(ctx))
-        return 0;
-
-    struct key_t key = {};
-    u64 zero = 0, *val;
-
-    bpf_probe_read(&key.c, sizeof(key.c), (void *)PT_REGS_PARM1(ctx));
-    val = counts.lookup_or_init(&key, &zero);
-    (*val)++;
-    return 0;
-};
-    ";
+    let code = include_str!("execsnoop.c");
+    // compile the above BPF code!
     let mut module = BPF::new(code)?;
-    let uprobe_code = module.load_uprobe("count")?;
-    module.attach_uprobe(
-        "/lib/x86_64-linux-gnu/libc.so.6",
-        "strlen",
-        uprobe_code,
-        -1, /* all PIDs */
-    )?;
-    let table = module.table("counts");
+    // load + attach kprobes!
+    let return_probe = module.load_kprobe("syscall__execve")?;
+    let entry_probe = module.load_kprobe("do_ret_sys_execve")?;
+    module.attach_kprobe("sys_execve", entry_probe)?;
+    module.attach_kretprobe("sys_execve", return_probe)?;
+    let table = module.table("events");
+    let mut perf_map = init_perf_map(table, perf_data_callback)?;
+    println!("{:-16} {:-7}", "PCOMM", "PID");
+
     while runnable.load(Ordering::SeqCst) {
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-        for e in &table {
-            // key and value are each a Vec<u8> so we need to transform them into a string and
-            // a u64 respectively
-            let key = get_string(&e.key);
-            let value = Cursor::new(e.value).read_u64::<NativeEndian>().unwrap();
-            if value > 10 {
-                println!("{:?} {:?}", key, value);
-            }
-        }
+        perf_map.poll(200);
     }
     Ok(())
+}
+
+fn perf_data_callback() -> Box<dyn FnMut(&[u8]) + Send> {
+    Box::new(|x| {
+        // This callback
+        let data: Data = x.into();
+        let comm = get_string(&data.comm);
+        println!(
+            "{:-16} {:-7}",
+            comm,
+            data.pid,
+        );
+    })
+}
+
+fn parse_struct(x: &[u8]) -> Data {
+    unsafe { ptr::read(x.as_ptr() as *const Data) }
 }
 
 fn get_string(x: &[u8]) -> String {
