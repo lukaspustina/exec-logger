@@ -66,6 +66,7 @@ bpf_text = """
 #include <linux/tty.h>
 
 #define ARGSIZE  128
+#define TTYSIZE 64
 
 enum event_type {
     EVENT_ARG,
@@ -78,8 +79,9 @@ struct data_t {
     char comm[TASK_COMM_LEN];
     enum event_type type;
     char argv[ARGSIZE];
-    char tty[64];
-    int has_tty;
+    char tty[TTYSIZE];
+    u32 uid;
+    u32 gid;
     int retval;
 };
 
@@ -150,8 +152,10 @@ int do_ret_sys_execve(struct pt_regs *ctx)
     // as the real_parent->tgid.
     // We use the get_ppid function as a fallback in those cases. (#1883)
     data.ppid = task->real_parent->tgid;
-    bpf_probe_read_str(data.tty, 64, task->signal->tty->name);
-    data.has_tty = task->signal->tty != NULL;
+    bpf_probe_read_str(data.tty, TTYSIZE, task->signal->tty->name);
+
+    data.uid = task->cred->uid.val;
+    data.gid = task->cred->gid.val;
 
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
     data.type = EVENT_RET;
@@ -176,7 +180,7 @@ b.attach_kretprobe(event=execve_fnname, fn_name="do_ret_sys_execve")
 # header
 if args.timestamp:
     print("%-8s" % ("TIME(s)"), end="")
-print("%-16s %-6s %-6s %3s %s %s %s" % ("PCOMM", "PID", "PPID", "RET", "SSHD", "TTY", "ARGS"))
+print("%-16s %-6s %-6s %-6s %-6s %3s %s %s %s" % ("PCOMM", "PID", "UID", "GID", "PPID", "RET", "SSHD", "TTY", "ARGS"))
 
 class EventType(object):
     EVENT_ARG = 0
@@ -247,8 +251,8 @@ def print_event(cpu, data, size):
             ppid = event.ppid if event.ppid > 0 else get_ppid(event.pid)
             ppid = b"%d" % ppid if ppid > 0 else b"?"
             argv_text = b' '.join(argv[event.pid]).replace(b'\n', b'\\n')
-            printb(b"%-16s %-6d %-6s %3d %s %s(%s) %s" % (event.comm, event.pid,
-                   ppid, event.retval, ssh, event.tty, event.has_tty == 1, argv_text))
+            printb(b"%-16s %-6d %-6d %-6d %-6s %3d %s %s(%s) %s" % (event.comm, event.pid,
+                   event.uid, event.gid, ppid, event.retval, ssh, event.tty, event.tty is not None, argv_text))
 
         try:
             del(argv[event.pid])
