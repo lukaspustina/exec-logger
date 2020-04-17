@@ -12,6 +12,7 @@ use std::ptr;
 use std::sync::Arc;
 
 #[repr(C)]
+#[allow(non_camel_case_types, dead_code)]
 enum EventType {
     EVENT_ARG,
     EVENT_RET,
@@ -21,10 +22,10 @@ enum EventType {
 struct Data {
     pid: libc::c_int,
     ppid: libc::c_int,
-    comm: [u8; 16],   // TASK_COMM_LEN
+    comm: [u8; 16],   // TASK_COMM_LEN, cf. execsnoop.c
     r#type: EventType,
-    argv: [u8; 128],   // ARGSIZE
-    tty: [u8; 64],   // TTYSIZE
+    argv: [u8; 128],   // ARGSIZE, cf. execsnoop.c
+    tty: [u8; 64],   // TTYSIZE, cf. execsnoop.c
     uid: libc::c_int,
     gid: libc::c_int,
     ret: libc::c_int,
