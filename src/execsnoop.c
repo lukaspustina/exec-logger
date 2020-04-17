@@ -7,8 +7,6 @@
 #define ARGSIZE  128
 #define TTYSIZE 64
 
-#define MAXARG 20
-
 enum event_type {
     EVENT_ARG,
     EVENT_RET,

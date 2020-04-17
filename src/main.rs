@@ -39,8 +39,10 @@ impl From<&[u8]> for Data {
 
 fn do_main(runnable: Arc<AtomicBool>) -> Result<(), Error> {
     let code = include_str!("execsnoop.c");
+    let code = code
+        .replace("MAXARGS", "20");
     // compile the above BPF code!
-    let mut module = BPF::new(code)?;
+    let mut module = BPF::new(&code)?;
     // load + attach kprobes!
     let return_probe = module.load_kprobe("syscall__execve")?;
     let entry_probe = module.load_kprobe("do_ret_sys_execve")?;
