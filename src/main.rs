@@ -1,6 +1,8 @@
-use core::sync::atomic::{AtomicBool, Ordering};
 use exec_logger::ExecLogger;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 fn main() {
     let runnable = Arc::new(AtomicBool::new(true));

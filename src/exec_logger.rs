@@ -1,7 +1,6 @@
 use crate::bpf;
-use core::sync::atomic::AtomicBool;
 use failure::Error;
-use std::sync::{Arc, Mutex};
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
 #[derive(Debug)]
 enum Event {
@@ -25,13 +24,13 @@ impl From<bpf::Event> for Event {
         match event.r#type {
             bpf::EventType::EVENT_ARG => {
                 Event::Arg(Arg {
-                    argv: bpf::bcc_helper::parse_string(&event.argv),
+                    argv: bpf::parse_string(&event.argv),
                 })
             }
             bpf::EventType::EVENT_RET => {
                 Event::Return(Return {
                     pid:  event.pid,
-                    comm: bpf::bcc_helper::parse_string(&event.comm),
+                    comm: bpf::parse_string(&event.comm),
                 })
             }
         }
@@ -75,4 +74,3 @@ pub struct ExecLoggerArgs {
 impl Default for ExecLoggerArgs {
     fn default() -> Self { ExecLoggerArgs { max_args: 20 } }
 }
-

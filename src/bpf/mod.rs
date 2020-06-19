@@ -2,9 +2,14 @@ use bcc::{
     core::BPF,
     perf::{init_perf_map, PerfMap},
 };
-use core::sync::atomic::{AtomicBool, Ordering};
 use failure::Error;
-use std::sync::Arc;
+use std::{
+    ptr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[repr(C)]
 #[allow(non_camel_case_types, dead_code)]
@@ -28,7 +33,7 @@ pub struct Event {
 }
 
 impl From<&[u8]> for Event {
-    fn from(bytes: &[u8]) -> Self { bcc_helper::parse_struct(bytes) }
+    fn from(bytes: &[u8]) -> Self { parse_struct(bytes) }
 }
 
 pub struct KProbe<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> {
@@ -111,18 +116,13 @@ where
     })
 }
 
-pub mod bcc_helper {
-    use std::ptr;
+pub fn parse_struct<T>(buf: &[u8]) -> T { unsafe { ptr::read(buf.as_ptr() as *const T) } }
 
-    pub fn parse_struct<T>(buf: &[u8]) -> T { unsafe { ptr::read(buf.as_ptr() as *const T) } }
-
-    pub fn parse_string(buf: &[u8]) -> String {
-        // has to start from the front, so we find the _first_ 0 in order prevent reading
-        // invalid memory
-        match buf.iter().position(|&x| x == 0) {
-            Some(zero_pos) => String::from_utf8_lossy(&buf[0..zero_pos]).to_string(),
-            None => String::from_utf8_lossy(buf).to_string(),
-        }
+pub fn parse_string(buf: &[u8]) -> String {
+    // has to start from the front, so we find the _first_ 0 in order prevent reading
+    // invalid memory
+    match buf.iter().position(|&x| x == 0) {
+        Some(zero_pos) => String::from_utf8_lossy(&buf[0..zero_pos]).to_string(),
+        None => String::from_utf8_lossy(buf).to_string(),
     }
 }
-
