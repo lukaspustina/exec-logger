@@ -67,7 +67,7 @@ int syscall__execve(struct pt_regs *ctx,
 
     // skip first arg, as we submitted filename
     #pragma unroll
-    for (int i = 1; i < MAXARG; i++) {
+    for (int i = 1; i < MAXARGS; i++) {
         if (submit_arg(ctx, (void *)&__argv[i], &data) == 0)
              goto out;
     }

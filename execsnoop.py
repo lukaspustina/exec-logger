@@ -60,7 +60,7 @@ args = parser.parse_args()
 file = open('src/execsnoop.c', 'r')
 bpf_text = file.read()
 
-bpf_text = bpf_text.replace("MAXARG", args.max_args)
+bpf_text = bpf_text.replace("MAXARGS", args.max_args)
 if args.ebpf:
     print(bpf_text)
     exit()
