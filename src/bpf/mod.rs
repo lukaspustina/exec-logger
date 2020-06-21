@@ -53,7 +53,14 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
 
     pub fn run(self) -> Result<(), Error> {
         let handler = create_handler(self.handler);
-        let perf_map = prepare_kprobe(&self.args, handler)?;
+        // It is important, to keep bpf in scope while running the event_loop. Otherwise it gets
+        // dropped and we loose the connection to our kprobe
+        let bpf = load_bpf(&self.args)?;
+
+        // create events table
+        let table = bpf.table("events");
+        let perf_map = init_perf_map(table, handler)?;
+
         event_loop(self.runnable, perf_map)
     }
 }
@@ -72,10 +79,7 @@ impl KProbeArgs {
     fn max_args_value(&self) -> String { self.max_args.to_string() }
 }
 
-fn prepare_kprobe<F>(args: &KProbeArgs, handler: F) -> Result<PerfMap, Error>
-where
-    F: Fn() -> Box<dyn FnMut(&[u8]) + Send>,
-{
+fn load_bpf(args: &KProbeArgs) -> Result<BPF, Error> {
     // load and parameterize BPF
     let code = include_str!("execsnoop.c");
     let code = code.replace(args.max_args_key(), &args.max_args_value());
@@ -86,11 +90,8 @@ where
     let return_probe = module.load_kprobe("do_ret_sys_execve")?;
     module.attach_kprobe("sys_execve", entry_probe)?;
     module.attach_kretprobe("sys_execve", return_probe)?;
-    // create events table
-    let table = module.table("events");
-    let perf_map = init_perf_map(table, handler)?;
 
-    Ok(perf_map)
+    Ok(module)
 }
 
 fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap) -> Result<(), Error> {
@@ -119,8 +120,8 @@ where
 pub fn parse_struct<T>(buf: &[u8]) -> T { unsafe { ptr::read(buf.as_ptr() as *const T) } }
 
 pub fn parse_string(buf: &[u8]) -> String {
-    // has to start from the front, so we find the _first_ 0 in order prevent reading
-    // invalid memory
+    // Search has to start from the front, so we find the _first_ 0 in order to prevent
+    // reading invalid memory
     match buf.iter().position(|&x| x == 0) {
         Some(zero_pos) => String::from_utf8_lossy(&buf[0..zero_pos]).to_string(),
         None => String::from_utf8_lossy(buf).to_string(),
