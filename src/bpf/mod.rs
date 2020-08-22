@@ -1,6 +1,6 @@
 use bcc::{
-    core::BPF,
-    perf::{init_perf_map, PerfMap},
+    BPF,
+    perf_event::{init_perf_map, PerfMap},
 };
 use failure::Error;
 use std::{
@@ -86,10 +86,14 @@ fn load_bpf(args: &KProbeArgs) -> Result<BPF, Error> {
     // compile the above BPF code!
     let mut module = BPF::new(&code)?;
     // load + attach kprobes!
-    let entry_probe = module.load_kprobe("syscall__execve")?;
-    let return_probe = module.load_kprobe("do_ret_sys_execve")?;
-    module.attach_kprobe("sys_execve", entry_probe)?;
-    module.attach_kretprobe("sys_execve", return_probe)?;
+    bcc::Kprobe::new()
+        .handler("syscall__execve")
+        .function("sys_execve")
+        .attach(&mut module)?;
+    bcc::Kretprobe::new()
+        .handler("do_ret_sys_execve")
+        .function("sys_execve")
+        .attach(&mut module)?;
 
     Ok(module)
 }
