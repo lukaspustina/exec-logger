@@ -10,4 +10,11 @@ pub enum Error {
         #[from]
         source: bcc::BccError,
     },
+    #[error("IO failed")]
+    IoError {
+        #[from]
+        source: std::io::Error,
+    },
+    #[error("logging thread failed")]
+    ThreadError,
 }

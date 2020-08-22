@@ -3,6 +3,7 @@ use bcc::{
     perf_event::{init_perf_map, PerfMap},
     BPF,
 };
+use log::trace;
 use std::{
     ptr,
     sync::{
@@ -41,15 +42,15 @@ impl From<&[u8]> for Event {
 pub struct KProbe<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> {
     runnable: Arc<AtomicBool>,
     handler: F,
-    args: KProbeArgs,
+    opts: KProbeOpts,
 }
 
 impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
-    pub fn new(runnable: Arc<AtomicBool>, handler: F, args: KProbeArgs) -> Self {
+    pub fn new(runnable: Arc<AtomicBool>, handler: F, opts: KProbeOpts) -> Self {
         KProbe {
             runnable,
             handler,
-            args,
+            opts,
         }
     }
 
@@ -57,7 +58,7 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
         let handler = create_handler(self.handler);
         // It is important, to keep bpf in scope while running the event_loop. Otherwise it gets
         // dropped and we loose the connection to our kprobe
-        let bpf = load_bpf(&self.args)?;
+        let bpf = load_bpf(&self.opts)?;
 
         // create events table
         let table = bpf.table("events");
@@ -67,17 +68,17 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
     }
 }
 
-pub struct KProbeArgs {
+pub struct KProbeOpts {
     pub max_args: i32,
 }
 
-impl Default for KProbeArgs {
+impl Default for KProbeOpts {
     fn default() -> Self {
-        KProbeArgs { max_args: 20 }
+        KProbeOpts { max_args: 20 }
     }
 }
 
-impl KProbeArgs {
+impl KProbeOpts {
     fn max_args_key(&self) -> &'static str {
         "MAXARGS"
     }
@@ -87,10 +88,10 @@ impl KProbeArgs {
     }
 }
 
-fn load_bpf(args: &KProbeArgs) -> Result<BPF> {
+fn load_bpf(opts: &KProbeOpts) -> Result<BPF> {
     // load and parameterize BPF
     let code = include_str!("execsnoop.c");
-    let code = code.replace(args.max_args_key(), &args.max_args_value());
+    let code = code.replace(opts.max_args_key(), &opts.max_args_value());
     // compile the above BPF code!
     let mut module = BPF::new(&code)?;
     // load + attach kprobes!
@@ -108,6 +109,7 @@ fn load_bpf(args: &KProbeArgs) -> Result<BPF> {
 
 fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap) -> Result<()> {
     while runnable.load(Ordering::SeqCst) {
+        trace!("Event loop: polling perf map.");
         perf_map.poll(200);
     }
     Ok(())

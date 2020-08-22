@@ -1,23 +1,48 @@
-use crate::{Result, bpf};
-use std::collections::HashMap;
-use std::sync::{atomic::AtomicBool, Arc, Mutex};
+use log::debug;
+use std::sync::{Arc, atomic::AtomicBool, Mutex, Barrier};
+use std::sync::atomic::Ordering;
+use std::thread;
+use std::thread::JoinHandle;
+
+use crate::{bpf, Error, Result};
+use crate::output::Output;
 
 #[derive(Debug)]
-enum Event {
+pub enum Event {
     Arg(Arg),
     Return(Return),
 }
 
 #[derive(Debug)]
-struct Arg {
-    pid: i32,
-    argv: String,
+pub struct Arg {
+    pub(crate) pid: i32,
+    pub(crate) argv: String,
+}
+
+impl Arg {
+    pub fn pid(&self) -> i32 {
+        self.pid
+    }
+
+    pub fn argv(&self) -> &str {
+        self.argv.as_str()
+    }
 }
 
 #[derive(Debug)]
-struct Return {
-    pid: i32,
-    comm: String,
+pub struct Return {
+    pub(crate) pid: i32,
+    pub(crate) comm: String,
+}
+
+impl Return {
+    pub fn pid(&self) -> i32 {
+        self.pid
+    }
+
+    pub fn comm(&self) -> &str {
+        self.comm.as_str()
+    }
 }
 
 impl From<bpf::Event> for Event {
@@ -35,59 +60,32 @@ impl From<bpf::Event> for Event {
     }
 }
 
-pub struct ExecLogger {
+#[derive(Debug)]
+pub struct ExecLoggerOpts {
+    max_args: i32,
+}
+
+impl Default for ExecLoggerOpts {
+    fn default() -> Self {
+        ExecLoggerOpts { max_args: 20 }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExecLogger<T: Output + Send + 'static > {
     runnable: Arc<AtomicBool>,
-    args: ExecLoggerArgs,
+    opts: ExecLoggerOpts,
+    output: T,
 }
 
-trait Output {
-    fn header(&self) -> Result<()>;
-    fn arg(&self, arg: Arg) -> Result<()>;
-    fn ret(&self, ret: Return) -> Result<()>;
-}
-
-struct SimpleOutput {
-    args: Arc<Mutex<HashMap<i32, Vec<String>>>>,
-}
-
-impl SimpleOutput {
-    fn new() -> Self {
-        SimpleOutput {
-            args: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-}
-
-impl Output for SimpleOutput {
-    fn header(&self) -> Result<()> {
-        println!("{:-16} {:-7}", "PCOMM", "PID");
-        Ok(())
+impl<T: Output + Send + 'static > ExecLogger<T> {
+    pub fn new(opts: ExecLoggerOpts, output: T) -> Self {
+        let runnable = Arc::new(AtomicBool::new(true));
+        ExecLogger { runnable, opts, output }
     }
 
-    fn arg(&self, arg: Arg) -> Result<()> {
-        let mut args = self.args.lock().unwrap();
-        let value = args.entry(arg.pid).or_insert_with(Vec::new);
-        value.push(arg.argv);
-        Ok(())
-    }
-
-    fn ret(&self, ret: Return) -> Result<()> {
-        let mut args = self.args.lock().unwrap();
-        let value = args.remove(&ret.pid);
-        println!("{:?}: {:?}", ret, value);
-        Ok(())
-    }
-}
-
-impl ExecLogger {
-    pub fn new(runnable: Arc<AtomicBool>, args: ExecLoggerArgs) -> Self {
-        ExecLogger { runnable, args }
-    }
-
-    pub fn run(self) -> Result<()> {
-        let output = SimpleOutput::new();
-        output.header()?;
-        let output = Arc::new(Mutex::new(output));
+    pub fn run(self) -> Result<RunningExecLogger> {
+        let output = Arc::new(Mutex::new(self.output));
 
         let handler = move |event: bpf::Event| {
             let event: Event = event.into();
@@ -98,21 +96,49 @@ impl ExecLogger {
             }
         };
 
-        let kprobe_args = bpf::KProbeArgs {
-            max_args: self.args.max_args,
+        let kprobe_args = bpf::KProbeOpts {
+            max_args: self.opts.max_args,
         };
-        let kprobe = bpf::KProbe::new(self.runnable, handler, kprobe_args);
+        let kprobe = bpf::KProbe::new(self.runnable.clone(), handler, kprobe_args);
 
-        kprobe.run()
+        let thread_name = format!("{}-logging", env!("CARGO_PKG_NAME"));
+        let thread = thread::Builder::new().name(thread_name);
+        let join_handle = thread.spawn(move || {
+            debug!("Started logging thread");
+            kprobe.run()
+        })?;
+
+        Ok(RunningExecLogger::new(self.runnable, join_handle))
     }
 }
 
-pub struct ExecLoggerArgs {
-    max_args: i32,
+#[derive(Debug)]
+pub struct RunningExecLogger {
+    runnable: Arc<AtomicBool>,
+    join_handle: JoinHandle<Result<()>>,
+    barrier: Arc<Barrier>,
 }
 
-impl Default for ExecLoggerArgs {
-    fn default() -> Self {
-        ExecLoggerArgs { max_args: 20 }
+impl RunningExecLogger {
+    pub fn new(runnable: Arc<AtomicBool>, join_handle: JoinHandle<Result<()>>) -> RunningExecLogger {
+        let barrier = Arc::new(Barrier::new(2));
+        RunningExecLogger {
+            runnable,
+            join_handle,
+            barrier,
+        }
+    }
+
+    pub fn stop(self) -> Result<()> {
+        self.runnable.store(false, Ordering::SeqCst);
+        let res = self.join_handle.join()
+            .map_err(|_| Error::ThreadError )?;
+        self.barrier.clone().wait();
+        res
+    }
+
+    pub fn waiter(&self) -> Arc<Barrier> {
+        self.barrier.clone()
     }
 }
+
