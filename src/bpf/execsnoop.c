@@ -15,6 +15,7 @@ enum event_type {
 struct data_t {
     u32 pid;  // PID as in the userspace term (i.e. task->tgid in kernel)
     u32 ppid; // Parent PID as in the userspace term (i.e task->real_parent->tgid in kernel)
+    int ancestor;
     char comm[TASK_COMM_LEN];
     enum event_type type;
     char argv[ARGSIZE];
@@ -67,7 +68,7 @@ int hld_syscall_execve_entry(struct pt_regs *ctx,
 
     // skip first arg, as we submitted filename
     #pragma unroll
-    for (int i = 1; i < MAXARGS; i++) {
+    for (int i = 1; i < MAX_ARGS; i++) {
         if (submit_arg(ctx, (void *)&__argv[i], &data) == 0)
              goto out;
     }
@@ -83,6 +84,9 @@ int hld_syscall_execve_return(struct pt_regs *ctx)
 {
     struct data_t data = {};
     struct task_struct *task;
+    int ancestor = false;
+    struct task_struct *parent_task;
+    char compare_buf[sizeof("ANCESTOR_NAME")];
 
     data.pid = bpf_get_current_pid_tgid() >> 32;
 
@@ -91,6 +95,33 @@ int hld_syscall_execve_return(struct pt_regs *ctx)
     // as the real_parent->tgid.
     // We use the get_ppid function as a fallback in those cases. (#1883)
     data.ppid = task->real_parent->tgid;
+
+    // Try to find ancestor of this process
+    parent_task = task->real_parent;
+    #pragma unroll
+    for (int i = 0; i < MAX_ANCESTORS - 1; i++) {
+        bpf_probe_read(&compare_buf, sizeof(compare_buf), parent_task->comm);
+        // No access to libc::strcmp allowed and __builtin_memcmp doesn't seem to work on 18.04.
+        #pragma unroll
+        for (int j = 0; j < sizeof(compare_buf) - 1; j++) {
+            char left = "ANCESTOR_NAME"[j];
+            char right = compare_buf[j];
+            if (left == right) {
+                ancestor = true;
+            } else {
+                ancestor = false;
+                goto cmp_done;
+            }
+        }
+cmp_done:
+        if (ancestor) {
+            goto find_done;
+        }
+        parent_task = parent_task->real_parent;
+    }
+find_done:
+    data.ancestor = ancestor;
+
     bpf_probe_read_str(data.tty, TTYSIZE, task->signal->tty->name);
 
     data.uid = task->cred->uid.val;

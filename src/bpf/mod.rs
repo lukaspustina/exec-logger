@@ -24,6 +24,7 @@ pub enum EventType {
 pub struct Event {
     pub pid: libc::c_int,
     pub ppid: libc::c_int,
+    pub ancestor: libc::c_int,
     pub comm: [u8; 16], // TASK_COMM_LEN, cf. execsnoop.c
     pub r#type: EventType,
     pub argv: [u8; 128], // ARGSIZE, cf. execsnoop.c
@@ -70,21 +71,39 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
 
 pub struct KProbeOpts {
     pub max_args: i32,
+    pub ancestor_name: String,
+    pub max_ancestors: i32,
 }
 
 impl Default for KProbeOpts {
     fn default() -> Self {
-        KProbeOpts { max_args: 20 }
+        KProbeOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20 }
     }
 }
 
 impl KProbeOpts {
     fn max_args_key(&self) -> &'static str {
-        "MAXARGS"
+        "MAX_ARGS"
     }
 
     fn max_args_value(&self) -> String {
         self.max_args.to_string()
+    }
+
+    fn max_ancestors_key(&self) -> &'static str {
+        "MAX_ANCESTORS"
+    }
+
+    fn max_ancestors_value(&self) -> String {
+        self.max_ancestors.to_string()
+    }
+
+    fn ancestor_name_key(&self) -> &'static str {
+        "ANCESTOR_NAME"
+    }
+
+    fn ancestor_name_value(&self) -> &str {
+        self.ancestor_name.as_str()
     }
 }
 
@@ -92,6 +111,8 @@ fn load_bpf(opts: &KProbeOpts) -> Result<BPF> {
     // load and parameterize BPF
     let code = include_str!("execsnoop.c");
     let code = code.replace(opts.max_args_key(), &opts.max_args_value());
+    let code = code.replace(opts.ancestor_name_key(), opts.ancestor_name_value());
+    let code = code.replace(opts.max_ancestors_key(), &opts.max_ancestors_value());
     // compile the above BPF code!
     let mut module = BPF::new(&code)?;
     // load + attach kprobes!

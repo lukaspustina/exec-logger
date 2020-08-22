@@ -23,6 +23,7 @@ pub struct Arg {
 pub struct Return {
     pub pid: i32,
     pub ppid: i32,
+    pub ancestor: bool,
     pub comm: String,
     pub tty: String,
     pub uid: i32,
@@ -40,6 +41,7 @@ impl From<bpf::Event> for Event {
             bpf::EventType::EVENT_RET => Event::Return(Return {
                 pid: event.pid,
                 ppid: event.ppid,
+                ancestor: event.ancestor != 0,
                 comm: bpf::parse_string(&event.comm),
                 tty: bpf::parse_string(&event.tty),
                 uid: event.uid,
@@ -53,11 +55,13 @@ impl From<bpf::Event> for Event {
 #[derive(Debug)]
 pub struct ExecLoggerOpts {
     max_args: i32,
+    ancestor_name: String,
+    max_ancestors: i32,
 }
 
 impl Default for ExecLoggerOpts {
     fn default() -> Self {
-        ExecLoggerOpts { max_args: 20 }
+        ExecLoggerOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20  }
     }
 }
 
@@ -86,10 +90,12 @@ impl<T: Output + Send + 'static > ExecLogger<T> {
             }
         };
 
-        let kprobe_args = bpf::KProbeOpts {
+        let kprobe_opts = bpf::KProbeOpts {
             max_args: self.opts.max_args,
+            ancestor_name: self.opts.ancestor_name.clone(),
+            max_ancestors: self.opts.max_ancestors,
         };
-        let kprobe = bpf::KProbe::new(self.runnable.clone(), handler, kprobe_args);
+        let kprobe = bpf::KProbe::new(self.runnable.clone(), handler, kprobe_opts);
 
         let thread_name = format!("{}-logging", env!("CARGO_PKG_NAME"));
         let thread = thread::Builder::new().name(thread_name);
