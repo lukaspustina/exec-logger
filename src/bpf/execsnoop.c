@@ -43,7 +43,7 @@ static int submit_arg(struct pt_regs *ctx, void *ptr, struct data_t *data)
     return 0;
 }
 
-int syscall__execve(struct pt_regs *ctx,
+int hld_syscall_execve_entry(struct pt_regs *ctx,
     const char __user *filename,
     const char __user *const __user *__argv,
     const char __user *const __user *__envp)
@@ -79,7 +79,7 @@ out:
     return 0;
 }
 
-int do_ret_sys_execve(struct pt_regs *ctx)
+int hld_syscall_execve_return(struct pt_regs *ctx)
 {
     struct data_t data = {};
     struct task_struct *task;

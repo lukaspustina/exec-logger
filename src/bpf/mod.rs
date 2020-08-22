@@ -87,11 +87,11 @@ fn load_bpf(args: &KProbeArgs) -> Result<BPF, Error> {
     let mut module = BPF::new(&code)?;
     // load + attach kprobes!
     bcc::Kprobe::new()
-        .handler("syscall__execve")
+        .handler("hld_syscall_execve_entry")
         .function("sys_execve")
         .attach(&mut module)?;
     bcc::Kretprobe::new()
-        .handler("do_ret_sys_execve")
+        .handler("hld_syscall_execve_return")
         .function("sys_execve")
         .attach(&mut module)?;
 
