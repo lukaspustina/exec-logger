@@ -1,6 +1,7 @@
-pub(crate) mod bpf;
-pub(crate) mod error;
-pub(crate) mod exec_logger;
+pub mod bpf;
+pub mod error;
+pub mod exec_logger;
+pub mod logging;
 pub mod output;
 
 pub use crate::error::Error;

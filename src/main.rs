@@ -1,8 +1,27 @@
 use anyhow::{Result, Context};
-use exec_logger::{ExecLogger, Stopper};
-use log::{debug, info};
-use std::io::{self, Write};
+use exec_logger::{ExecLogger, Stopper, ExecLoggerOpts};
+use exec_logger::logging;
 use exec_logger::output::{TableOutput, TableOutputOpts, Output};
+use log::{debug, info};
+use std::io;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = env!("CARGO_PKG_NAME"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
+struct Args {
+    /// Sets max number of syscall arguments to parse
+    #[structopt(long, default_value = "20")]
+    pub max_args: i32,
+    /// Sets name of ancestor to filter
+    #[structopt(long, default_value = "sshd")]
+    pub ancestor: String,
+    /// Sets max number ancestors to check for ancestor name
+    #[structopt(long, default_value = "20")]
+    pub max_ancestors: i32,
+    /// Sets the level of verbosity
+    #[structopt(short, long, parse(from_occurrences))]
+    pub verbose: u64,
+}
 
 #[derive(Debug, Clone)]
 pub enum ExitStatus {
@@ -21,9 +40,12 @@ impl ExitStatus {
 }
 
 fn main() {
-    start_logging();
+    let args = Args::from_args();
+    logging::start_logging_for_level(args.verbose);
 
-    match run() {
+    info!("Starting {} version {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+
+    match run(&args) {
         Ok(_) => ExitStatus::Ok,
         Err(err) => {
             eprintln!("Failed: {:?}", err);
@@ -32,25 +54,13 @@ fn main() {
     }.exit();
 }
 
-fn start_logging() {
-    let start = std::time::Instant::now();
-    env_logger::Builder::from_default_env()
-        .format(move |buf, rec| {
-            let t = start.elapsed().as_secs_f32();
-            let thread_id_string = format!("{:?}", std::thread::current().id());
-            let thread_id = &thread_id_string[9..thread_id_string.len() - 1];
-            writeln!(buf, "{:.03} [{:5}] ({:}) - {}", t, rec.level(), thread_id, rec.args())
-        })
-        .init();
-}
-
-fn run() -> Result<()> {
+fn run(args: &Args) -> Result<()> {
     let stdout = io::stdout();
     let output_opts = TableOutputOpts::new(stdout);
     let mut output = TableOutput::new(output_opts);
     output.header()?;
 
-    let opts = Default::default();
+    let opts = args.into();
     let logger = ExecLogger::new(opts, output).run()
         .context("Failed to run logger")?;
     info!("Running.");
@@ -66,4 +76,14 @@ fn run() -> Result<()> {
     info!("Finished.");
 
     Ok(())
+}
+
+impl From<&Args> for ExecLoggerOpts {
+    fn from(args: &Args) -> Self {
+        ExecLoggerOpts {
+            max_args: args.max_args,
+            ancestor_name: args.ancestor.clone(),
+            max_ancestors: args.max_ancestors,
+        }
+    }
 }

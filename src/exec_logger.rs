@@ -54,9 +54,9 @@ impl From<bpf::Event> for Event {
 
 #[derive(Debug)]
 pub struct ExecLoggerOpts {
-    max_args: i32,
-    ancestor_name: String,
-    max_ancestors: i32,
+    pub max_args: i32,
+    pub ancestor_name: String,
+    pub max_ancestors: i32,
 }
 
 impl Default for ExecLoggerOpts {
