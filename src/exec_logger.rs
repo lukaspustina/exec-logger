@@ -1,5 +1,5 @@
 use log::debug;
-use std::sync::{Arc, atomic::AtomicBool, Mutex, Barrier};
+use std::sync::{Arc, atomic::AtomicBool, Mutex};
 use std::sync::atomic::Ordering;
 use std::thread;
 use std::thread::JoinHandle;
@@ -112,29 +112,34 @@ impl<T: Output + Send + 'static > ExecLogger<T> {
 pub struct RunningExecLogger {
     runnable: Arc<AtomicBool>,
     join_handle: JoinHandle<Result<()>>,
-    barrier: Arc<Barrier>,
 }
 
 impl RunningExecLogger {
     pub fn new(runnable: Arc<AtomicBool>, join_handle: JoinHandle<Result<()>>) -> RunningExecLogger {
-        let barrier = Arc::new(Barrier::new(2));
         RunningExecLogger {
             runnable,
             join_handle,
-            barrier,
         }
     }
 
-    pub fn stop(self) -> Result<()> {
-        self.runnable.store(false, Ordering::SeqCst);
-        let res = self.join_handle.join()
-            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?;
-        self.barrier.clone().wait();
-        res
+    pub fn stopper(&self) -> Arc<AtomicBool> {
+        self.runnable.clone()
     }
 
-    pub fn waiter(&self) -> Arc<Barrier> {
-        self.barrier.clone()
+    pub fn wait(self) -> Result<()> {
+        let res = self.join_handle.join()
+            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?;
+
+        res
     }
 }
 
+pub trait Stopper {
+    fn stop(&self);
+}
+
+impl Stopper for Arc<AtomicBool> {
+    fn stop(&self) {
+        self.store(false, Ordering::SeqCst);
+    }
+}

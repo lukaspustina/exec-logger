@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from bcc import BPF
 
-file = open('src/bpf/execsnoop.c', 'r')
+file = open('src/bpf/exec_logger.c', 'r')
 bpf_text = file.read()
 bpf_text = bpf_text.replace("MAX_ARGS", "20")
 bpf_text = bpf_text.replace("ANCESTOR_NAME", "sshd")

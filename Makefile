@@ -5,7 +5,8 @@ check:
 	cargo check
 
 check_bcc:
-	.ci/scripts/check_bcc.py
+	@echo bcc check
+	@.ci/scripts/check_bcc.py
 
 build: check_bcc
 	cargo build

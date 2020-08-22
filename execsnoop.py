@@ -57,7 +57,7 @@ parser.add_argument("--ebpf", action="store_true",
     help=argparse.SUPPRESS)
 args = parser.parse_args()
 
-file = open('src/bpf/execsnoop.c', 'r')
+file = open('src/bpf/exec_logger.c', 'r')
 bpf_text = file.read()
 
 bpf_text = bpf_text.replace("MAXARGS", args.max_args)

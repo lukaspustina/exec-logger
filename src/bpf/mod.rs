@@ -25,10 +25,10 @@ pub struct Event {
     pub pid: libc::c_int,
     pub ppid: libc::c_int,
     pub ancestor: libc::c_int,
-    pub comm: [u8; 16], // TASK_COMM_LEN, cf. execsnoop.c
+    pub comm: [u8; 16], // TASK_COMM_LEN, cf. exec_logger.c
     pub r#type: EventType,
-    pub argv: [u8; 128], // ARGSIZE, cf. execsnoop.c
-    pub tty: [u8; 64],   // TTYSIZE, cf. execsnoop.c
+    pub argv: [u8; 128], // ARGSIZE, cf. exec_logger.c
+    pub tty: [u8; 64],   // TTYSIZE, cf. exec_logger.c
     pub uid: libc::c_int,
     pub gid: libc::c_int,
     pub ret: libc::c_int,
@@ -109,7 +109,7 @@ impl KProbeOpts {
 
 fn load_bpf(opts: &KProbeOpts) -> Result<BPF> {
     // load and parameterize BPF
-    let code = include_str!("execsnoop.c");
+    let code = include_str!("exec_logger.c");
     let code = code.replace(opts.max_args_key(), &opts.max_args_value());
     let code = code.replace(opts.ancestor_name_key(), opts.ancestor_name_value());
     let code = code.replace(opts.max_ancestors_key(), &opts.max_ancestors_value());

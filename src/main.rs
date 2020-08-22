@@ -1,7 +1,6 @@
 use anyhow::{Result, Context};
-use exec_logger::ExecLogger;
-use log::{error, info};
-use std::cell::Cell;
+use exec_logger::{ExecLogger, Stopper};
+use log::{debug, info};
 use std::io::{self, Write};
 use exec_logger::output::{TableOutput, TableOutputOpts, Output};
 
@@ -13,8 +12,6 @@ pub enum ExitStatus {
     CliParsingFailed = 1,
     /// Execution failed,
     Failed = 2,
-    /// An unrecoverable error occurred. This is worst case and should not happen.
-    UnrecoverableError = 3,
 }
 
 impl ExitStatus {
@@ -23,47 +20,19 @@ impl ExitStatus {
     }
 }
 
-fn run() -> Result<ExitStatus> {
-    let stdout = io::stdout();
-    let output_opts = TableOutputOpts::new(stdout);
-    let mut output = TableOutput::new(output_opts);
-    output.header()?;
+fn main() {
+    start_logging();
 
-    let opts = Default::default();
-    let logger = ExecLogger::new(opts, output).run()
-        .context("Failed to run logger")?;
-    let waiter = logger.waiter();
-    let logger_cell = Cell::new(Some(logger));
-
-    ctrlc::set_handler(move || {
-        info!("Ctrl-C-Handler activated");
-        let res = logger_cell.replace(None).unwrap().stop(); // Safe unwrap
-        shutdown(res);
-    }).context("Failed to set handler for SIGINT / SIGTERM")?;
-    info!("Running.");
-    let _ = waiter.wait();
-    // Give the ctrl-c-handler time to clean up
-    std::thread::park();
-
-    // Unreachable code
-    Ok(ExitStatus::UnrecoverableError)
-}
-
-fn shutdown(result: exec_logger::Result<()>) {
-    info!("Shutting down.");
-    let exit_status = match result {
+    match run() {
         Ok(_) => ExitStatus::Ok,
         Err(err) => {
-            eprintln!("Failed: {:#?}", err);
+            eprintln!("Failed: {:?}", err);
             ExitStatus::Failed
         }
-    };
-
-    info!("Done.");
-    exit_status.exit();
+    }.exit();
 }
 
-fn main() {
+fn start_logging() {
     let start = std::time::Instant::now();
     env_logger::Builder::from_default_env()
         .format(move |buf, rec| {
@@ -73,9 +42,28 @@ fn main() {
             writeln!(buf, "{:.03} [{:5}] ({:}) - {}", t, rec.level(), thread_id, rec.args())
         })
         .init();
+}
 
-    let _ = run();
+fn run() -> Result<()> {
+    let stdout = io::stdout();
+    let output_opts = TableOutputOpts::new(stdout);
+    let mut output = TableOutput::new(output_opts);
+    output.header()?;
 
-    error!("Execution error, this code should never run.");
-    ExitStatus::UnrecoverableError.exit();
+    let opts = Default::default();
+    let logger = ExecLogger::new(opts, output).run()
+        .context("Failed to run logger")?;
+    info!("Running.");
+
+    let stopper = logger.stopper();
+    ctrlc::set_handler(move || {
+        debug!("Ctrl-C-Handler activated");
+        stopper.stop();
+    }).context("Failed to set handler for SIGINT / SIGTERM")?;
+
+    info!("Waiting for event loop to finish.");
+    logger.wait()?;
+    info!("Finished.");
+
+    Ok(())
 }
