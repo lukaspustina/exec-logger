@@ -38,7 +38,7 @@ impl<T: Write> Output for TableOutput<T> {
     fn header(&mut self) -> Result<()> {
         let mut writer = self.opts.writer.lock()
             .map_err(|_| Error::RunTimeError { msg: "failed to write output" })?;
-        writeln!(writer, "{:-16} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {}", "PCOMM", "PID", "UID", "GID", "PPID", "RET", "SSHD?", "TTY", "ARGS")?;
+        writeln!(writer, "{:-16} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {}", "PCOMM", "PID", "PPID", "UID", "GID", "RET", "SSHD?", "TTY", "ARGS")?;
 
         Ok(())
     }
@@ -46,7 +46,7 @@ impl<T: Write> Output for TableOutput<T> {
     fn arg(&mut self, arg: Arg) -> Result<()> {
         let mut args = self.args.lock()
             .map_err(|_| Error::RunTimeError { msg: "failed to collect for output" })?;
-        let value = args.entry(arg.pid()).or_insert_with(Vec::new);
+        let value = args.entry(arg.pid).or_insert_with(Vec::new);
         value.push(arg.argv);
 
         Ok(())
@@ -58,10 +58,10 @@ impl<T: Write> Output for TableOutput<T> {
 
         let mut args = self.args.lock()
             .map_err(|_| Error::RunTimeError { msg: "failed to collect for output" })?;
-        let args = args.remove(&ret.pid());
+        let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
-        writeln!(writer, "{:-16} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {:-6} {}", ret.comm, ret.pid, "UID", "GID", "PPID", "RET", "SSHD?", "TTY", args)?;
+        writeln!(writer, "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-6} {:-6} {}", ret.comm, ret.pid, ret.ppid, ret.uid, ret.gid, ret.ret, "SSHD?", ret.tty, args)?;
 
         Ok(())
     }

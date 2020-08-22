@@ -19,30 +19,15 @@ pub struct Arg {
     pub(crate) argv: String,
 }
 
-impl Arg {
-    pub fn pid(&self) -> i32 {
-        self.pid
-    }
-
-    pub fn argv(&self) -> &str {
-        self.argv.as_str()
-    }
-}
-
 #[derive(Debug)]
 pub struct Return {
-    pub(crate) pid: i32,
-    pub(crate) comm: String,
-}
-
-impl Return {
-    pub fn pid(&self) -> i32 {
-        self.pid
-    }
-
-    pub fn comm(&self) -> &str {
-        self.comm.as_str()
-    }
+    pub pid: i32,
+    pub ppid: i32,
+    pub comm: String,
+    pub tty: String,
+    pub uid: i32,
+    pub gid: i32,
+    pub ret: i32,
 }
 
 impl From<bpf::Event> for Event {
@@ -54,7 +39,12 @@ impl From<bpf::Event> for Event {
             }),
             bpf::EventType::EVENT_RET => Event::Return(Return {
                 pid: event.pid,
+                ppid: event.ppid,
                 comm: bpf::parse_string(&event.comm),
+                tty: bpf::parse_string(&event.tty),
+                uid: event.uid,
+                gid: event.gid,
+                ret: event.ret,
             }),
         }
     }
