@@ -2,8 +2,8 @@ use anyhow::{Result, Context};
 use exec_logger::ExecLogger;
 use log::{error, info};
 use std::cell::Cell;
-use std::io::Write;
-use exec_logger::output::{SimpleOutput, Output};
+use std::io::{self, Write};
+use exec_logger::output::{TableOutput, TableOutputOpts, Output};
 
 #[derive(Debug, Clone)]
 pub enum ExitStatus {
@@ -24,11 +24,12 @@ impl ExitStatus {
 }
 
 fn run() -> Result<ExitStatus> {
-    let opts = Default::default();
-
-    let output = SimpleOutput::new();
+    let stdout = io::stdout();
+    let output_opts = TableOutputOpts::new(stdout);
+    let mut output = TableOutput::new(output_opts);
     output.header()?;
 
+    let opts = Default::default();
     let logger = ExecLogger::new(opts, output).run()
         .context("Failed to run logger")?;
     let waiter = logger.waiter();

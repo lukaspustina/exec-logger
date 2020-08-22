@@ -5,16 +5,18 @@ use thiserror::Error;
 ///
 /// Must be `Send` because it used by async function which might run on different threads.
 pub enum Error {
-    #[error("BCC failed")]
+    #[error("BCC error")]
     BccError {
         #[from]
         source: bcc::BccError,
     },
-    #[error("IO failed")]
+    #[error("IO error")]
     IoError {
         #[from]
         source: std::io::Error,
     },
-    #[error("logging thread failed")]
-    ThreadError,
+    #[error("run time error because {msg}")]
+    RunTimeError {
+        msg: &'static str,
+    },
 }

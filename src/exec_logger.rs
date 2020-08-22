@@ -89,7 +89,7 @@ impl<T: Output + Send + 'static > ExecLogger<T> {
 
         let handler = move |event: bpf::Event| {
             let event: Event = event.into();
-            let output = output.lock().unwrap();
+            let mut output = output.lock().unwrap();
             match event {
                 Event::Arg(a) => output.arg(a).unwrap(),
                 Event::Return(r) => output.ret(r).unwrap(),
@@ -132,7 +132,7 @@ impl RunningExecLogger {
     pub fn stop(self) -> Result<()> {
         self.runnable.store(false, Ordering::SeqCst);
         let res = self.join_handle.join()
-            .map_err(|_| Error::ThreadError )?;
+            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?;
         self.barrier.clone().wait();
         res
     }
