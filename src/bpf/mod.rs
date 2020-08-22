@@ -1,8 +1,8 @@
+use crate::Result;
 use bcc::{
-    BPF,
     perf_event::{init_perf_map, PerfMap},
+    BPF,
 };
-use failure::Error;
 use std::{
     ptr,
     sync::{
@@ -21,25 +21,27 @@ pub enum EventType {
 
 #[repr(C)]
 pub struct Event {
-    pub pid:    libc::c_int,
-    pub ppid:   libc::c_int,
-    pub comm:   [u8; 16], // TASK_COMM_LEN, cf. execsnoop.c
+    pub pid: libc::c_int,
+    pub ppid: libc::c_int,
+    pub comm: [u8; 16], // TASK_COMM_LEN, cf. execsnoop.c
     pub r#type: EventType,
-    pub argv:   [u8; 128], // ARGSIZE, cf. execsnoop.c
-    pub tty:    [u8; 64],  // TTYSIZE, cf. execsnoop.c
-    pub uid:    libc::c_int,
-    pub gid:    libc::c_int,
-    pub ret:    libc::c_int,
+    pub argv: [u8; 128], // ARGSIZE, cf. execsnoop.c
+    pub tty: [u8; 64],   // TTYSIZE, cf. execsnoop.c
+    pub uid: libc::c_int,
+    pub gid: libc::c_int,
+    pub ret: libc::c_int,
 }
 
 impl From<&[u8]> for Event {
-    fn from(bytes: &[u8]) -> Self { parse_struct(bytes) }
+    fn from(bytes: &[u8]) -> Self {
+        parse_struct(bytes)
+    }
 }
 
 pub struct KProbe<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> {
     runnable: Arc<AtomicBool>,
-    handler:  F,
-    args:     KProbeArgs,
+    handler: F,
+    args: KProbeArgs,
 }
 
 impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
@@ -51,7 +53,7 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
         }
     }
 
-    pub fn run(self) -> Result<(), Error> {
+    pub fn run(self) -> Result<()> {
         let handler = create_handler(self.handler);
         // It is important, to keep bpf in scope while running the event_loop. Otherwise it gets
         // dropped and we loose the connection to our kprobe
@@ -70,16 +72,22 @@ pub struct KProbeArgs {
 }
 
 impl Default for KProbeArgs {
-    fn default() -> Self { KProbeArgs { max_args: 20 } }
+    fn default() -> Self {
+        KProbeArgs { max_args: 20 }
+    }
 }
 
 impl KProbeArgs {
-    fn max_args_key(&self) -> &'static str { "MAXARGS" }
+    fn max_args_key(&self) -> &'static str {
+        "MAXARGS"
+    }
 
-    fn max_args_value(&self) -> String { self.max_args.to_string() }
+    fn max_args_value(&self) -> String {
+        self.max_args.to_string()
+    }
 }
 
-fn load_bpf(args: &KProbeArgs) -> Result<BPF, Error> {
+fn load_bpf(args: &KProbeArgs) -> Result<BPF> {
     // load and parameterize BPF
     let code = include_str!("execsnoop.c");
     let code = code.replace(args.max_args_key(), &args.max_args_value());
@@ -98,7 +106,7 @@ fn load_bpf(args: &KProbeArgs) -> Result<BPF, Error> {
     Ok(module)
 }
 
-fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap) -> Result<(), Error> {
+fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap) -> Result<()> {
     while runnable.load(Ordering::SeqCst) {
         perf_map.poll(200);
     }
@@ -121,7 +129,9 @@ where
     })
 }
 
-pub fn parse_struct<T>(buf: &[u8]) -> T { unsafe { ptr::read(buf.as_ptr() as *const T) } }
+pub fn parse_struct<T>(buf: &[u8]) -> T {
+    unsafe { ptr::read(buf.as_ptr() as *const T) }
+}
 
 pub fn parse_string(buf: &[u8]) -> String {
     // Search has to start from the front, so we find the _first_ 0 in order to prevent

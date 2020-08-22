@@ -13,8 +13,9 @@ name = "exec_logger"
 path = "src/lib.rs"
 
 [dependencies]
+anyhow = "1"
 bcc = "0.0.24"
 byteorder = "1.3"
 ctrlc = "3.1"
-failure = "0.1"
 libc = "0.2"
+thiserror = "1"
