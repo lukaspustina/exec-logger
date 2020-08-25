@@ -15,20 +15,20 @@ pub enum Event {
 
 #[derive(Debug)]
 pub struct Arg {
-    pub(crate) pid: i32,
+    pub(crate) pid: u32,
     pub(crate) argv: String,
 }
 
 #[derive(Debug)]
 pub struct Return {
-    pub pid: i32,
-    pub ppid: i32,
+    pub pid: u32,
+    pub ppid: u32,
     pub ancestor: bool,
     pub comm: String,
     pub tty: String,
-    pub uid: i32,
-    pub gid: i32,
-    pub ret: i32,
+    pub uid: u32,
+    pub gid: u32,
+    pub ret_val: i32,
 }
 
 impl From<bpf::Event> for Event {
@@ -46,7 +46,7 @@ impl From<bpf::Event> for Event {
                 tty: bpf::parse_string(&event.tty),
                 uid: event.uid,
                 gid: event.gid,
-                ret: event.ret,
+                ret_val: event.ret_val,
             }),
         }
     }
@@ -55,10 +55,10 @@ impl From<bpf::Event> for Event {
 #[derive(Debug)]
 pub struct ExecLoggerOpts {
     pub quiet: bool,
-    pub max_args: i32,
+    pub max_args: u32,
     pub ancestor_name: String,
-    pub max_ancestors: i32,
-    pub interval_ms: i32,
+    pub max_ancestors: u32,
+    pub interval_ms: u32,
 }
 
 impl Default for ExecLoggerOpts {
@@ -97,8 +97,14 @@ impl<T: Output + Send + 'static> ExecLogger<T> {
             let event: Event = event.into();
             let mut output = output.lock().unwrap();
             match event {
-                Event::Arg(a) => output.arg(a).unwrap(),
-                Event::Return(r) => output.ret(r).unwrap(),
+                Event::Arg(a) => {
+                    debug!("Entry/Arg event: {:?}", a);
+                    output.arg(a).unwrap()
+                },
+                Event::Return(r) => {
+                    debug!("Return event: {:?}", r);
+                    output.ret(r).unwrap()
+                },
             }
         };
 

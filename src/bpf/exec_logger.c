@@ -22,7 +22,7 @@ struct data_t {
     char tty[TTYSIZE];
     u32 uid;
     u32 gid;
-    int retval;
+    int ret_val;
 };
 
 BPF_PERF_OUTPUT(events);
@@ -129,7 +129,7 @@ find_done:
 
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
     data.type = EVENT_RET;
-    data.retval = PT_REGS_RC(ctx);
+    data.ret_val = PT_REGS_RC(ctx);
     events.perf_submit(ctx, &data, sizeof(data));
 
     return 0;

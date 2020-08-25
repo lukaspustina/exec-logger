@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use crate::output::Output;
+use crate::output::{Output, ToName};
 use crate::{Arg, Return};
 use crate::{Error, Result};
 
@@ -10,20 +10,22 @@ use crate::{Error, Result};
 pub struct TableOutputOpts<T: Write> {
     writer: Arc<Mutex<T>>,
     only_ancestor: bool,
+    numeric: bool,
 }
 
 impl<T: Write> TableOutputOpts<T> {
-    pub fn new(writer: T, only_ancestor: bool) -> TableOutputOpts<T> {
+    pub fn new(writer: T, only_ancestor: bool, numeric: bool) -> TableOutputOpts<T> {
         TableOutputOpts {
             writer: Arc::new(Mutex::new(writer)),
             only_ancestor,
+            numeric,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct TableOutput<T: Write> {
-    args: Arc<Mutex<HashMap<i32, Vec<String>>>>,
+    args: Arc<Mutex<HashMap<u32, Vec<String>>>>,
     opts: TableOutputOpts<T>,
 }
 
@@ -75,7 +77,7 @@ impl<T: Write> Output for TableOutput<T> {
             writeln!(
                 writer,
                 "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-9} {:-6} {}",
-                ret.comm, ret.pid, ret.ppid, ret.uid, ret.gid, ret.ret, ret.ancestor, ret.tty, args
+                ret.comm, ret.pid, ret.ppid, ret.uid.to_user(self.opts.numeric), ret.gid.to_group(self.opts.numeric), ret.ret_val, ret.ancestor, ret.tty, args
             )?;
         }
 

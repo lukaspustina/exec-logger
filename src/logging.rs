@@ -18,7 +18,7 @@ fn log_level(verbosity: u64) -> LevelFilter {
 fn setup_logging(log_level: LevelFilter) {
     let start = std::time::Instant::now();
     env_logger::Builder::from_default_env()
-        .filter_level(log_level)
+        .filter_module("exec_logger", log_level)
         .format(move |buf, rec| {
             let t = start.elapsed().as_secs_f32();
             let thread_id_string = format!("{:?}", std::thread::current().id());

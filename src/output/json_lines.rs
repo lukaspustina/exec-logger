@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use crate::output::Output;
+use crate::output::{Output, User, Group, ToName};
 use crate::{Arg, Return};
 use crate::{Error, Result};
 
@@ -11,20 +11,22 @@ use crate::{Error, Result};
 pub struct JsonLinesOutputOpts<T: Write> {
     writer: Arc<Mutex<T>>,
     only_ancestor: bool,
+    numeric: bool,
 }
 
 impl<T: Write> JsonLinesOutputOpts<T> {
-    pub fn new(writer: T, only_ancestor: bool) -> JsonLinesOutputOpts<T> {
+    pub fn new(writer: T, only_ancestor: bool, numeric: bool) -> JsonLinesOutputOpts<T> {
         JsonLinesOutputOpts {
             writer: Arc::new(Mutex::new(writer)),
             only_ancestor,
+            numeric,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct JsonLinesOutput<T: Write> {
-    args: Arc<Mutex<HashMap<i32, Vec<String>>>>,
+    args: Arc<Mutex<HashMap<u32, Vec<String>>>>,
     opts: JsonLinesOutputOpts<T>,
 }
 
@@ -64,7 +66,7 @@ impl<T: Write> Output for JsonLinesOutput<T> {
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
         if !self.opts.only_ancestor || ret.ancestor {
-            let json_line = JsonLine::from_ret_and_args(ret, args);
+            let json_line = JsonLine::from_ret_and_args(ret, args, self.opts.numeric);
             let json_line = serde_json::to_string(&json_line)?;
             writeln!(writer, "{}", json_line)?;
         }
@@ -75,28 +77,28 @@ impl<T: Write> Output for JsonLinesOutput<T> {
 
 #[derive(Debug, Serialize)]
 struct JsonLine {
-    pid: i32,
-    ppid: i32,
+    pid: u32,
+    ppid: u32,
     ancestor: bool,
     comm: String,
     tty: String,
-    uid: i32,
-    gid: i32,
+    uid: User,
+    gid: Group,
     return_value: i32,
     args: String,
 }
 
 impl JsonLine {
-    fn from_ret_and_args(ret: Return, args: String) -> JsonLine {
+    fn from_ret_and_args(ret: Return, args: String, numeric: bool) -> JsonLine {
         JsonLine {
             pid: ret.pid,
             ppid: ret.ppid,
             ancestor: ret.ancestor,
             comm: ret.comm,
             tty: ret.tty,
-            uid: ret.uid,
-            gid: ret.gid,
-            return_value: ret.ret,
+            uid: ret.uid.to_user(numeric),
+            gid: ret.gid.to_group(numeric),
+            return_value: ret.ret_val,
             args,
         }
     }

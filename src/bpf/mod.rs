@@ -23,16 +23,16 @@ pub enum EventType {
 
 #[repr(C)]
 pub struct Event {
-    pub pid: libc::c_int,
-    pub ppid: libc::c_int,
-    pub ancestor: libc::c_int,
+    pub pid: libc::c_uint,
+    pub ppid: libc::c_uint,
+    pub ancestor: libc::c_uint,
     pub comm: [u8; 16], // TASK_COMM_LEN, cf. exec_logger.c
     pub r#type: EventType,
     pub argv: [u8; 128], // ARGSIZE, cf. exec_logger.c
     pub tty: [u8; 64],   // TTYSIZE, cf. exec_logger.c
-    pub uid: libc::c_int,
-    pub gid: libc::c_int,
-    pub ret: libc::c_int,
+    pub uid: libc::c_uint,
+    pub gid: libc::c_uint,
+    pub ret_val: libc::c_int,
 }
 
 impl From<&[u8]> for Event {
@@ -75,10 +75,10 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
 
 #[derive(Debug)]
 pub struct KProbeOpts {
-    pub max_args: i32,
+    pub max_args: u32,
     pub ancestor_name: String,
-    pub max_ancestors: i32,
-    pub interval_ms: i32,
+    pub max_ancestors: u32,
+    pub interval_ms: u32,
 }
 
 impl Default for KProbeOpts {
@@ -139,10 +139,10 @@ fn load_bpf(opts: &KProbeOpts) -> Result<BPF> {
     Ok(module)
 }
 
-fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap, interval_ms: i32) -> Result<()> {
+fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap, interval_ms: u32) -> Result<()> {
     while runnable.load(Ordering::SeqCst) {
         trace!("Event loop: polling perf map.");
-        perf_map.poll(interval_ms);
+        perf_map.poll(interval_ms as i32);
     }
 
     Ok(())

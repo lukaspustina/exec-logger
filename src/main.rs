@@ -11,22 +11,25 @@ use structopt::StructOpt;
 struct Args {
     /// Sets max number of syscall arguments to parse
     #[structopt(long, default_value = "20")]
-    pub max_args: i32,
+    pub max_args: u32,
     /// Sets name of ancestor to filter
     #[structopt(long, default_value = "sshd")]
     pub ancestor: String,
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "20")]
-    pub max_ancestors: i32,
+    pub max_ancestors: u32,
     /// Displays only processes with expected ancestor
     #[structopt(long)]
     pub only_ancestor: bool,
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "200")]
-    pub interval: i32,
+    pub interval: u32,
     /// Sets output format
     #[structopt(long, default_value = "table", possible_values = &["table", "json"])]
     pub output: String,
+    /// Sets numeric output for uid and gid
+    #[structopt(short, long)]
+    pub numeric: bool,
     /// Sets kprobe event polling interval
     #[structopt(short, long)]
     pub quiet: bool,
@@ -77,14 +80,14 @@ fn run(args: &Args) -> Result<()> {
         "json" => {
             debug!("Using JSON Lines output");
             let stdout = io::stdout();
-            let output_opts = JsonLinesOutputOpts::new(stdout, args.only_ancestor);
+            let output_opts = JsonLinesOutputOpts::new(stdout, args.only_ancestor, args.numeric);
             let output = JsonLinesOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
         }
         _ => {
             debug!("Using table output");
             let stdout = io::stdout();
-            let output_opts = TableOutputOpts::new(stdout, args.only_ancestor);
+            let output_opts = TableOutputOpts::new(stdout, args.only_ancestor, args.numeric);
             let output = TableOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
         }
