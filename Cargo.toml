@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Lukas Pustina <lukas@pustina.de>"]
 description = "Log all executed programs"
 edition = "2018"
+license = "Apache-2.0"
+
 
 [[bin]]
 name = "exec_logger"

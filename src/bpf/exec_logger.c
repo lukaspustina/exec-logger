@@ -1,3 +1,10 @@
+// Copyright 2016 Netflix, Inc.
+// Licensed under the Apache License, Version 2.0 (the "License")
+//
+// 07-Feb-2016   Brendan Gregg   Created this.
+// Original: https://github.com/iovisor/bcc/blob/6c793317dac5866db2899e62504d047a02c089b7/tools/execsnoop.py
+// 25-Aug-2020   Lukas Pustina   Extended information collected.
+
 #include <uapi/linux/ptrace.h>
 #include <linux/fs.h>
 #include <linux/sched.h>
