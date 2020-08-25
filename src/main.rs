@@ -40,7 +40,7 @@ struct Args {
     #[structopt(long, value_name = "MILLISECONDS", default_value = "200")]
     pub interval: u32,
     /// Sets output format
-    #[structopt(long, value_name = "FORMAT", default_value = "table", possible_values = &["table", "json"])]
+    #[structopt(long, value_name = "FORMAT  ", default_value = "table", possible_values = &["table", "json"])]
     pub output: String,
     /// Sets numeric output for uid and gid
     #[structopt(short, long)]

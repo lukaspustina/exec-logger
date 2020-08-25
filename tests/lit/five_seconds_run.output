@@ -1,0 +1,4 @@
+RUN: @bin --wait 5
+
+CHECK: PCOMM            PID    PPID   UID    GID    RET    ANCESTOR? TTY    Args
+CHECK-NEXT: ls               [[\d+-*]] [[\d+-*]] [[\w+]] [[\w+]] 0----- [[true|false]]      pts[[\d+]]   /bin/ls --color=auto

@@ -28,3 +28,6 @@ serde_json = "1"
 structopt = "0.3"
 thiserror = "1"
 users = "0.10"
+
+[dev-dependencies]
+lit = "1"

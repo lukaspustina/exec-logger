@@ -14,6 +14,10 @@ build: check_bcc
 test: check_bcc
 	cargo test
 
+acceptance_tests: BIN=$(shell find target/debug/deps -name "cli_output_tests*" -perm /u+x -type f -exec stat -c '%Y %n' {} \; | sort -nr | awk 'NR==1,NR==3 {print $$2}')
+acceptance_tests:
+	(sleep 3; ls > /dev/null) & sudo ${BIN} --ignored
+
 clippy:
 	cargo clippy --bins --tests --benches --examples --all-features
 

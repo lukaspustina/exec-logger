@@ -1,0 +1,5 @@
+RUN: @bin --help
+
+CHECK: exec-logger
+CHECK: USAGE:
+CHECK: OPTIONS:
