@@ -20,6 +20,7 @@ use std::thread::JoinHandle;
 
 use crate::output::Output;
 use crate::{bpf, Error, Result};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum Event {
@@ -157,6 +158,14 @@ impl RunningExecLogger {
     }
 
     pub fn wait(self) -> Result<()> {
+        self.join_handle.join().map_err(|_| Error::RunTimeError {
+            msg: "failed to synchronize with logging thread",
+        })?
+    }
+
+    pub fn wait_n_stop(self, time: Duration) -> Result<()> {
+        thread::sleep(time);
+        self.runnable.stop();
         self.join_handle.join().map_err(|_| Error::RunTimeError {
             msg: "failed to synchronize with logging thread",
         })?

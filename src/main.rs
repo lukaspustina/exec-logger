@@ -19,31 +19,35 @@ use exec_logger::{ExecLogger, ExecLoggerOpts, Stopper};
 use log::{debug, info};
 use std::io;
 use structopt::StructOpt;
+use std::time::Duration;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = env!("CARGO_PKG_NAME"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
 struct Args {
     /// Sets max number of syscall arguments to parse
-    #[structopt(long, default_value = "20")]
+    #[structopt(long, value_name = "NUMBER", default_value = "20")]
     pub max_args: u32,
     /// Sets name of ancestor to filter
-    #[structopt(long, default_value = "sshd")]
+    #[structopt(long, value_name = "BINARY NAME", default_value = "sshd")]
     pub ancestor: String,
     /// Sets max number ancestors to check for ancestor name
-    #[structopt(long, default_value = "20")]
+    #[structopt(long, value_name = "NUMBER", default_value = "20")]
     pub max_ancestors: u32,
     /// Displays only processes with expected ancestor
     #[structopt(long)]
     pub only_ancestor: bool,
-    /// Sets max number ancestors to check for ancestor name
-    #[structopt(long, default_value = "200")]
+    /// Sets event poll timer interval in ms
+    #[structopt(long, value_name = "MILLISECONDS", default_value = "200")]
     pub interval: u32,
     /// Sets output format
-    #[structopt(long, default_value = "table", possible_values = &["table", "json"])]
+    #[structopt(long, value_name = "FORMAT", default_value = "table", possible_values = &["table", "json"])]
     pub output: String,
     /// Sets numeric output for uid and gid
     #[structopt(short, long)]
     pub numeric: bool,
+    /// If set, runs only for set seconds and then terminates
+    #[structopt(long, value_name = "SECONDS")]
+    pub wait: Option<u64>,
     /// Sets kprobe event polling interval
     #[structopt(short, long)]
     pub quiet: bool,
@@ -117,8 +121,13 @@ fn run(args: &Args) -> Result<()> {
     })
     .context("Failed to set handler for SIGINT / SIGTERM")?;
 
-    info!("Waiting for event loop to finish.");
-    logger.wait()?;
+    if let Some(wait) = args.wait {
+        info!("Running event loop {} seconds.", wait);
+        logger.wait_n_stop(Duration::from_secs(wait))?;
+    } else {
+        info!("Waiting for event loop to finish.");
+        logger.wait()?;
+    }
     info!("Finished.");
 
     Ok(())
