@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use crate::output::{Output, User, Group, ToName};
+use crate::output::{Group, Output, ToName, User};
 use crate::{Arg, Return};
 use crate::{Error, Result};
 

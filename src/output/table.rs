@@ -91,7 +91,15 @@ impl<T: Write> Output for TableOutput<T> {
             writeln!(
                 writer,
                 "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-9} {:-6} {}",
-                ret.comm, ret.pid, ret.ppid, ret.uid.to_user(self.opts.numeric), ret.gid.to_group(self.opts.numeric), ret.ret_val, ret.ancestor, ret.tty, args
+                ret.comm,
+                ret.pid,
+                ret.ppid,
+                ret.uid.to_user(self.opts.numeric),
+                ret.gid.to_group(self.opts.numeric),
+                ret.ret_val,
+                ret.ancestor,
+                ret.tty,
+                args
             )?;
         }
 

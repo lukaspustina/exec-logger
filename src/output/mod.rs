@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fmt;
 use serde::Serialize;
+use std::fmt;
 
 pub use json_lines::{JsonLinesOutput, JsonLinesOutputOpts};
 pub use table::{TableOutput, TableOutputOpts};
 
-use crate::{Arg, Return};
 use crate::Result;
+use crate::{Arg, Return};
 
 mod json_lines;
 mod table;
@@ -39,8 +39,7 @@ pub enum User {
 
 impl User {
     pub fn try_from_id(id: u32) -> Option<User> {
-        users::get_user_by_uid(id)
-            .map(|user| User::Name(user.name().to_string_lossy().to_string()))
+        users::get_user_by_uid(id).map(|user| User::Name(user.name().to_string_lossy().to_string()))
     }
 
     pub fn from_id(id: u32) -> User {
@@ -66,8 +65,7 @@ pub enum Group {
 
 impl Group {
     pub fn try_from_id(id: u32) -> Option<Group> {
-        users::get_group_by_gid(id)
-            .map(|user| Group::Name(user.name().to_string_lossy().to_string()))
+        users::get_group_by_gid(id).map(|user| Group::Name(user.name().to_string_lossy().to_string()))
     }
 
     pub fn from_id(id: u32) -> Group {

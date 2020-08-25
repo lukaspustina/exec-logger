@@ -115,11 +115,11 @@ impl<T: Output + Send + 'static> ExecLogger<T> {
                 Event::Arg(a) => {
                     debug!("Entry/Arg event: {:?}", a);
                     output.arg(a).unwrap()
-                },
+                }
                 Event::Return(r) => {
                     debug!("Return event: {:?}", r);
                     output.ret(r).unwrap()
-                },
+                }
             }
         };
 

@@ -18,8 +18,8 @@ use exec_logger::output::{JsonLinesOutput, JsonLinesOutputOpts, TableOutput, Tab
 use exec_logger::{ExecLogger, ExecLoggerOpts, Stopper};
 use log::{debug, info};
 use std::io;
-use structopt::StructOpt;
 use std::time::Duration;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = env!("CARGO_PKG_NAME"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]

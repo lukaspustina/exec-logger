@@ -4,7 +4,12 @@ const CRATE_PATH: &str = env!("CARGO_MANIFEST_DIR");
 const DEBUG_TARGET_PATH: &str = "target/debug";
 
 fn bin() -> String {
-    format!("{}/{}/exec_logger{}", CRATE_PATH, DEBUG_TARGET_PATH, env::consts::EXE_SUFFIX)
+    format!(
+        "{}/{}/exec_logger{}",
+        CRATE_PATH,
+        DEBUG_TARGET_PATH,
+        env::consts::EXE_SUFFIX
+    )
 }
 
 #[ignore]
