@@ -4,13 +4,11 @@ use bcc::{
     BPF,
 };
 use log::trace;
-use std::{
-    ptr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{ptr, sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+}};
+use log::info;
 
 #[repr(C)]
 #[allow(non_camel_case_types, dead_code)]
@@ -56,6 +54,7 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
     }
 
     pub fn run(self) -> Result<()> {
+        info!("Running Kprobe handler: {:?}", &self.opts);
         let handler = create_handler(self.handler);
         // It is important, to keep bpf in scope while running the event_loop. Otherwise it gets
         // dropped and we loose the connection to our kprobe
@@ -65,19 +64,21 @@ impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
         let table = bpf.table("events");
         let perf_map = init_perf_map(table, handler)?;
 
-        event_loop(self.runnable, perf_map)
+        event_loop(self.runnable, perf_map, self.opts.interval_ms)
     }
 }
 
+#[derive(Debug)]
 pub struct KProbeOpts {
     pub max_args: i32,
     pub ancestor_name: String,
     pub max_ancestors: i32,
+    pub interval_ms: i32
 }
 
 impl Default for KProbeOpts {
     fn default() -> Self {
-        KProbeOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20 }
+        KProbeOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200 }
     }
 }
 
@@ -128,11 +129,12 @@ fn load_bpf(opts: &KProbeOpts) -> Result<BPF> {
     Ok(module)
 }
 
-fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap) -> Result<()> {
+fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap, interval_ms: i32) -> Result<()> {
     while runnable.load(Ordering::SeqCst) {
         trace!("Event loop: polling perf map.");
-        perf_map.poll(200);
+        perf_map.poll(interval_ms);
     }
+
     Ok(())
 }
 

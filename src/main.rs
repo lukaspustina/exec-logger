@@ -18,6 +18,12 @@ struct Args {
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "20")]
     pub max_ancestors: i32,
+    /// Sets max number ancestors to check for ancestor name
+    #[structopt(long, default_value = "200")]
+    pub interval: i32,
+    /// Sets kprobe event polling interval
+    #[structopt(short, long)]
+    pub quiet: bool,
     /// Sets the level of verbosity
     #[structopt(short, long, parse(from_occurrences))]
     pub verbose: u64,
@@ -58,7 +64,10 @@ fn run(args: &Args) -> Result<()> {
     let stdout = io::stdout();
     let output_opts = TableOutputOpts::new(stdout);
     let mut output = TableOutput::new(output_opts);
-    output.header()?;
+
+    if !args.quiet {
+        output.header()?;
+    }
 
     let opts = args.into();
     let logger = ExecLogger::new(opts, output).run()
@@ -84,6 +93,7 @@ impl From<&Args> for ExecLoggerOpts {
             max_args: args.max_args,
             ancestor_name: args.ancestor.clone(),
             max_ancestors: args.max_ancestors,
+            interval_ms: args.interval,
         }
     }
 }

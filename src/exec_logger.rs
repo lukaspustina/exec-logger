@@ -57,11 +57,12 @@ pub struct ExecLoggerOpts {
     pub max_args: i32,
     pub ancestor_name: String,
     pub max_ancestors: i32,
+    pub interval_ms: i32,
 }
 
 impl Default for ExecLoggerOpts {
     fn default() -> Self {
-        ExecLoggerOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20  }
+        ExecLoggerOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200  }
     }
 }
 
@@ -94,6 +95,7 @@ impl<T: Output + Send + 'static > ExecLogger<T> {
             max_args: self.opts.max_args,
             ancestor_name: self.opts.ancestor_name.clone(),
             max_ancestors: self.opts.max_ancestors,
+            interval_ms: self.opts.interval_ms,
         };
         let kprobe = bpf::KProbe::new(self.runnable.clone(), handler, kprobe_opts);
 
