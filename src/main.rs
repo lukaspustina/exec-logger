@@ -18,6 +18,9 @@ struct Args {
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "20")]
     pub max_ancestors: i32,
+    /// Displays only processes with expected ancestor
+    #[structopt(long)]
+    pub only_ancestor: bool,
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "200")]
     pub interval: i32,
@@ -69,14 +72,14 @@ fn run(args: &Args) -> Result<()> {
         "json" => {
             debug!("Using JSON Lines output");
             let stdout = io::stdout();
-            let output_opts = JsonLinesOutputOpts::new(stdout);
+            let output_opts = JsonLinesOutputOpts::new(stdout, args.only_ancestor);
             let output = JsonLinesOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
         },
         _ => {
             debug!("Using table output");
             let stdout = io::stdout();
-            let output_opts = TableOutputOpts::new(stdout);
+            let output_opts = TableOutputOpts::new(stdout, args.only_ancestor);
             let output = TableOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
         }

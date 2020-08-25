@@ -9,12 +9,14 @@ use crate::output::Output;
 #[derive(Debug)]
 pub struct TableOutputOpts<T: Write> {
     writer: Arc<Mutex<T>>,
+    only_ancestor: bool,
 }
 
 impl<T: Write> TableOutputOpts<T> {
-    pub fn new(writer: T) -> TableOutputOpts<T> {
+    pub fn new(writer: T, only_ancestor: bool) -> TableOutputOpts<T> {
         TableOutputOpts {
-            writer: Arc::new(Mutex::new(writer))
+            writer: Arc::new(Mutex::new(writer)),
+            only_ancestor
         }
     }
 }
@@ -61,7 +63,9 @@ impl<T: Write> Output for TableOutput<T> {
         let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
-        writeln!(writer, "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-9} {:-6} {}", ret.comm, ret.pid, ret.ppid, ret.uid, ret.gid, ret.ret, ret.ancestor, ret.tty, args)?;
+        if !self.opts.only_ancestor || (self.opts.only_ancestor && ret.ancestor) {
+            writeln!(writer, "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-9} {:-6} {}", ret.comm, ret.pid, ret.ppid, ret.uid, ret.gid, ret.ret, ret.ancestor, ret.tty, args)?;
+        }
 
         Ok(())
     }

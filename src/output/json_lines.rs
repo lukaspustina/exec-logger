@@ -10,12 +10,14 @@ use crate::output::Output;
 #[derive(Debug)]
 pub struct JsonLinesOutputOpts<T: Write> {
     writer: Arc<Mutex<T>>,
+    only_ancestor: bool,
 }
 
 impl<T: Write> JsonLinesOutputOpts<T> {
-    pub fn new(writer: T) -> JsonLinesOutputOpts<T> {
+    pub fn new(writer: T, only_ancestor: bool) -> JsonLinesOutputOpts<T> {
         JsonLinesOutputOpts {
-            writer: Arc::new(Mutex::new(writer))
+            writer: Arc::new(Mutex::new(writer)),
+            only_ancestor,
         }
     }
 }
@@ -58,9 +60,11 @@ impl<T: Write> Output for JsonLinesOutput<T> {
         let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
-        let json_line = JsonLine::from_ret_and_args(ret, args);
-        let json_line = serde_json::to_string(&json_line)?;
-        writeln!(writer, "{}", json_line)?;
+        if !self.opts.only_ancestor || (self.opts.only_ancestor && ret.ancestor) {
+            let json_line = JsonLine::from_ret_and_args(ret, args);
+            let json_line = serde_json::to_string(&json_line)?;
+            writeln!(writer, "{}", json_line)?;
+        }
 
         Ok(())
     }
