@@ -60,7 +60,7 @@ impl<T: Write> Output for JsonLinesOutput<T> {
         let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
-        if !self.opts.only_ancestor || (self.opts.only_ancestor && ret.ancestor) {
+        if !self.opts.only_ancestor || ret.ancestor {
             let json_line = JsonLine::from_ret_and_args(ret, args);
             let json_line = serde_json::to_string(&json_line)?;
             writeln!(writer, "{}", json_line)?;

@@ -134,10 +134,8 @@ impl RunningExecLogger {
     }
 
     pub fn wait(self) -> Result<()> {
-        let res = self.join_handle.join()
-            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?;
-
-        res
+        self.join_handle.join()
+            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?
     }
 }
 

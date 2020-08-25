@@ -40,7 +40,7 @@ impl<T: Write> Output for TableOutput<T> {
     fn header(&mut self) -> Result<()> {
         let mut writer = self.opts.writer.lock()
             .map_err(|_| Error::RunTimeError { msg: "failed to write output" })?;
-        writeln!(writer, "{:-16} {:-6} {:-6} {:-6} {:-6} {:-6} {:-9} {:-6} {}", "PCOMM", "PID", "PPID", "UID", "GID", "RET", "ANCESTOR?", "TTY", "ARGS")?;
+        writeln!(writer, "{:-16} {:-6} {:-6} {:-6} {:-6} {:-6} {:-9} {:-6} Args", "PCOMM", "PID", "PPID", "UID", "GID", "RET", "ANCESTOR?", "TTY")?;
 
         Ok(())
     }
@@ -63,7 +63,7 @@ impl<T: Write> Output for TableOutput<T> {
         let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 
-        if !self.opts.only_ancestor || (self.opts.only_ancestor && ret.ancestor) {
+        if !self.opts.only_ancestor || ret.ancestor {
             writeln!(writer, "{:-16} {:-<6} {:-<6} {:-<6} {:-<6} {:-<6} {:-9} {:-6} {}", ret.comm, ret.pid, ret.ppid, ret.uid, ret.gid, ret.ret, ret.ancestor, ret.tty, args)?;
         }
 

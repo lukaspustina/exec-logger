@@ -38,12 +38,14 @@ impl From<&[u8]> for Event {
     }
 }
 
+#[allow(clippy::unused_unit)]
 pub struct KProbe<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> {
     runnable: Arc<AtomicBool>,
     handler: F,
     opts: KProbeOpts,
 }
 
+#[allow(clippy::unused_unit)]
 impl<F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static> KProbe<F> {
     pub fn new(runnable: Arc<AtomicBool>, handler: F, opts: KProbeOpts) -> Self {
         KProbe {
@@ -140,6 +142,7 @@ fn event_loop(runnable: Arc<AtomicBool>, mut perf_map: PerfMap, interval_ms: i32
 
 type HandlerGenerator = Box<dyn Fn() -> Box<dyn FnMut(&[u8]) + Send>>;
 
+#[allow(clippy::unused_unit)]
 fn create_handler<F>(handler: F) -> HandlerGenerator
 where
     F: FnOnce(Event) -> () + Clone + std::marker::Send + 'static,
