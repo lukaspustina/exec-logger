@@ -54,6 +54,7 @@ impl From<bpf::Event> for Event {
 
 #[derive(Debug)]
 pub struct ExecLoggerOpts {
+    pub quiet: bool,
     pub max_args: i32,
     pub ancestor_name: String,
     pub max_ancestors: i32,
@@ -62,7 +63,7 @@ pub struct ExecLoggerOpts {
 
 impl Default for ExecLoggerOpts {
     fn default() -> Self {
-        ExecLoggerOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200  }
+        ExecLoggerOpts { quiet: false, max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200  }
     }
 }
 
@@ -79,7 +80,11 @@ impl<T: Output + Send + 'static > ExecLogger<T> {
         ExecLogger { runnable, opts, output }
     }
 
-    pub fn run(self) -> Result<RunningExecLogger> {
+    pub fn run(mut self) -> Result<RunningExecLogger> {
+        if !self.opts.quiet {
+            self.output.header()?;
+        }
+
         let output = Arc::new(Mutex::new(self.output));
 
         let handler = move |event: bpf::Event| {

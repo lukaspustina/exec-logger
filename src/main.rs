@@ -1,7 +1,7 @@
 use anyhow::{Result, Context};
 use exec_logger::{ExecLogger, Stopper, ExecLoggerOpts};
 use exec_logger::logging;
-use exec_logger::output::{TableOutput, TableOutputOpts, Output};
+use exec_logger::output::{JsonLinesOutput, JsonLinesOutputOpts, TableOutput, TableOutputOpts};
 use log::{debug, info};
 use std::io;
 use structopt::StructOpt;
@@ -21,6 +21,9 @@ struct Args {
     /// Sets max number ancestors to check for ancestor name
     #[structopt(long, default_value = "200")]
     pub interval: i32,
+    /// Sets output format
+    #[structopt(long, default_value = "table", possible_values = &["table", "json"])]
+    pub output: String,
     /// Sets kprobe event polling interval
     #[structopt(short, long)]
     pub quiet: bool,
@@ -61,17 +64,24 @@ fn main() {
 }
 
 fn run(args: &Args) -> Result<()> {
-    let stdout = io::stdout();
-    let output_opts = TableOutputOpts::new(stdout);
-    let mut output = TableOutput::new(output_opts);
-
-    if !args.quiet {
-        output.header()?;
-    }
-
     let opts = args.into();
-    let logger = ExecLogger::new(opts, output).run()
-        .context("Failed to run logger")?;
+    let logger = match args.output.to_lowercase().as_str() {
+        "json" => {
+            debug!("Using JSON Lines output");
+            let stdout = io::stdout();
+            let output_opts = JsonLinesOutputOpts::new(stdout);
+            let output = JsonLinesOutput::new(output_opts);
+            ExecLogger::new(opts, output).run()
+        },
+        _ => {
+            debug!("Using table output");
+            let stdout = io::stdout();
+            let output_opts = TableOutputOpts::new(stdout);
+            let output = TableOutput::new(output_opts);
+            ExecLogger::new(opts, output).run()
+        }
+    }.context("Failed to run logger")?;
+
     info!("Running.");
 
     let stopper = logger.stopper();
@@ -90,6 +100,7 @@ fn run(args: &Args) -> Result<()> {
 impl From<&Args> for ExecLoggerOpts {
     fn from(args: &Args) -> Self {
         ExecLoggerOpts {
+            quiet: args.quiet,
             max_args: args.max_args,
             ancestor_name: args.ancestor.clone(),
             max_ancestors: args.max_ancestors,

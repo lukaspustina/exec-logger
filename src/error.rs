@@ -15,6 +15,11 @@ pub enum Error {
         #[from]
         source: std::io::Error,
     },
+    #[error("IO error")]
+    JsonError {
+        #[from]
+        source: serde_json::error::Error,
+    },
     #[error("run time error because {msg}")]
     RunTimeError {
         msg: &'static str,

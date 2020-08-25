@@ -1,9 +1,11 @@
 use crate::Result;
 use crate::{Arg, Return};
 
-mod table_output;
+mod table;
+mod json_lines;
 
-pub use table_output::{TableOutput, TableOutputOpts};
+pub use json_lines::{JsonLinesOutput, JsonLinesOutputOpts};
+pub use table::{TableOutput, TableOutputOpts};
 
 pub trait Output {
     fn header(&mut self) -> Result<()>;
