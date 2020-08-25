@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use crate::{Error, Result};
-use crate::{Arg, Return};
 use crate::output::Output;
+use crate::{Arg, Return};
+use crate::{Error, Result};
 
 #[derive(Debug)]
 pub struct JsonLinesOutputOpts<T: Write> {
@@ -43,8 +43,9 @@ impl<T: Write> Output for JsonLinesOutput<T> {
     }
 
     fn arg(&mut self, arg: Arg) -> Result<()> {
-        let mut args = self.args.lock()
-            .map_err(|_| Error::RunTimeError { msg: "failed to collect for output" })?;
+        let mut args = self.args.lock().map_err(|_| Error::RunTimeError {
+            msg: "failed to collect for output",
+        })?;
         let value = args.entry(arg.pid).or_insert_with(Vec::new);
         value.push(arg.argv);
 
@@ -52,11 +53,13 @@ impl<T: Write> Output for JsonLinesOutput<T> {
     }
 
     fn ret(&mut self, ret: Return) -> Result<()> {
-        let mut writer = self.opts.writer.lock()
-            .map_err(|_| Error::RunTimeError { msg: "failed to write output" })?;
+        let mut writer = self.opts.writer.lock().map_err(|_| Error::RunTimeError {
+            msg: "failed to write output",
+        })?;
 
-        let mut args = self.args.lock()
-            .map_err(|_| Error::RunTimeError { msg: "failed to collect for output" })?;
+        let mut args = self.args.lock().map_err(|_| Error::RunTimeError {
+            msg: "failed to collect for output",
+        })?;
         let args = args.remove(&ret.pid);
         let args = args.map(|args| args.join(" ")).unwrap_or_else(|| "-".to_string());
 

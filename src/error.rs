@@ -21,7 +21,5 @@ pub enum Error {
         source: serde_json::error::Error,
     },
     #[error("run time error because {msg}")]
-    RunTimeError {
-        msg: &'static str,
-    },
+    RunTimeError { msg: &'static str },
 }

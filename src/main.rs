@@ -1,7 +1,7 @@
-use anyhow::{Result, Context};
-use exec_logger::{ExecLogger, Stopper, ExecLoggerOpts};
+use anyhow::{Context, Result};
 use exec_logger::logging;
 use exec_logger::output::{JsonLinesOutput, JsonLinesOutputOpts, TableOutput, TableOutputOpts};
+use exec_logger::{ExecLogger, ExecLoggerOpts, Stopper};
 use log::{debug, info};
 use std::io;
 use structopt::StructOpt;
@@ -55,7 +55,11 @@ fn main() {
     let args = Args::from_args();
     logging::start_logging_for_level(args.verbose);
 
-    info!("Starting {} version {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    info!(
+        "Starting {} version {}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
 
     match run(&args) {
         Ok(_) => ExitStatus::Ok,
@@ -63,7 +67,8 @@ fn main() {
             eprintln!("Failed: {:?}", err);
             ExitStatus::Failed
         }
-    }.exit();
+    }
+    .exit();
 }
 
 fn run(args: &Args) -> Result<()> {
@@ -75,7 +80,7 @@ fn run(args: &Args) -> Result<()> {
             let output_opts = JsonLinesOutputOpts::new(stdout, args.only_ancestor);
             let output = JsonLinesOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
-        },
+        }
         _ => {
             debug!("Using table output");
             let stdout = io::stdout();
@@ -83,7 +88,8 @@ fn run(args: &Args) -> Result<()> {
             let output = TableOutput::new(output_opts);
             ExecLogger::new(opts, output).run()
         }
-    }.context("Failed to run logger")?;
+    }
+    .context("Failed to run logger")?;
 
     info!("Running.");
 
@@ -91,7 +97,8 @@ fn run(args: &Args) -> Result<()> {
     ctrlc::set_handler(move || {
         debug!("Ctrl-C-Handler activated");
         stopper.stop();
-    }).context("Failed to set handler for SIGINT / SIGTERM")?;
+    })
+    .context("Failed to set handler for SIGINT / SIGTERM")?;
 
     info!("Waiting for event loop to finish.");
     logger.wait()?;

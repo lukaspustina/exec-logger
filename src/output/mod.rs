@@ -1,8 +1,8 @@
 use crate::Result;
 use crate::{Arg, Return};
 
-mod table;
 mod json_lines;
+mod table;
 
 pub use json_lines::{JsonLinesOutput, JsonLinesOutputOpts};
 pub use table::{TableOutput, TableOutputOpts};

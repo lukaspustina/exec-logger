@@ -3,12 +3,15 @@ use bcc::{
     perf_event::{init_perf_map, PerfMap},
     BPF,
 };
-use log::trace;
-use std::{ptr, sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-}};
 use log::info;
+use log::trace;
+use std::{
+    ptr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[repr(C)]
 #[allow(non_camel_case_types, dead_code)]
@@ -75,12 +78,17 @@ pub struct KProbeOpts {
     pub max_args: i32,
     pub ancestor_name: String,
     pub max_ancestors: i32,
-    pub interval_ms: i32
+    pub interval_ms: i32,
 }
 
 impl Default for KProbeOpts {
     fn default() -> Self {
-        KProbeOpts { max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200 }
+        KProbeOpts {
+            max_args: 20,
+            ancestor_name: "sshd".to_string(),
+            max_ancestors: 20,
+            interval_ms: 200,
+        }
     }
 }
 

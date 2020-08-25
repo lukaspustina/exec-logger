@@ -1,11 +1,11 @@
 use log::debug;
-use std::sync::{Arc, atomic::AtomicBool, Mutex};
 use std::sync::atomic::Ordering;
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 
-use crate::{bpf, Error, Result};
 use crate::output::Output;
+use crate::{bpf, Error, Result};
 
 #[derive(Debug)]
 pub enum Event {
@@ -63,18 +63,24 @@ pub struct ExecLoggerOpts {
 
 impl Default for ExecLoggerOpts {
     fn default() -> Self {
-        ExecLoggerOpts { quiet: false, max_args: 20, ancestor_name: "sshd".to_string(), max_ancestors: 20, interval_ms: 200  }
+        ExecLoggerOpts {
+            quiet: false,
+            max_args: 20,
+            ancestor_name: "sshd".to_string(),
+            max_ancestors: 20,
+            interval_ms: 200,
+        }
     }
 }
 
 #[derive(Debug)]
-pub struct ExecLogger<T: Output + Send + 'static > {
+pub struct ExecLogger<T: Output + Send + 'static> {
     runnable: Arc<AtomicBool>,
     opts: ExecLoggerOpts,
     output: T,
 }
 
-impl<T: Output + Send + 'static > ExecLogger<T> {
+impl<T: Output + Send + 'static> ExecLogger<T> {
     pub fn new(opts: ExecLoggerOpts, output: T) -> Self {
         let runnable = Arc::new(AtomicBool::new(true));
         ExecLogger { runnable, opts, output }
@@ -123,10 +129,7 @@ pub struct RunningExecLogger {
 
 impl RunningExecLogger {
     pub fn new(runnable: Arc<AtomicBool>, join_handle: JoinHandle<Result<()>>) -> RunningExecLogger {
-        RunningExecLogger {
-            runnable,
-            join_handle,
-        }
+        RunningExecLogger { runnable, join_handle }
     }
 
     pub fn stopper(&self) -> Arc<AtomicBool> {
@@ -134,8 +137,9 @@ impl RunningExecLogger {
     }
 
     pub fn wait(self) -> Result<()> {
-        self.join_handle.join()
-            .map_err(|_| Error::RunTimeError {msg: "failed to synchronize with logging thread"})?
+        self.join_handle.join().map_err(|_| Error::RunTimeError {
+            msg: "failed to synchronize with logging thread",
+        })?
     }
 }
 
